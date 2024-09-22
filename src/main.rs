@@ -1,45 +1,72 @@
 mod render;
 mod graphics;
+mod config;
 
 use std::sync::Arc;
-use std::time::Instant;
 use futures::FutureExt;
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
+use crate::config::ShuiqiOptions;
 use crate::render::Renderer;
 use crate::render::wgpu::WgpuRenderer;
 
 #[derive(Default)]
-struct ShuiqiApp {
-    // This is here only to keep the window alive
-    window: Option<Window>,
-    renderer: Option<Arc<Mutex<WgpuRenderer<'static>>>>,
-    last_resize: Option<Instant>
+pub struct ShuqiApp {
+    config: ShuiqiOptions
 }
 
-impl ShuiqiApp {
-    fn new() -> Self {
-        ShuiqiApp {
+#[derive(Default)]
+struct ShuqiIntermediateApp {
+    app: ShuqiApp,
+    window: Option<Window>,
+    renderer: Option<Arc<Mutex<WgpuRenderer<'static>>>>,
+    allow_resize: bool,
+    resize_task: Option<tokio::task::JoinHandle<()>>
+}
+
+impl ShuqiIntermediateApp {
+    fn new(app: ShuqiApp) -> Self {
+        ShuqiIntermediateApp {
+            app,
             window: None,
             renderer: None,
-            last_resize: None
+            resize_task: None,
+            allow_resize: true
         }
     }
 
-    fn start(&mut self) {
+    pub fn start(&mut self) {
         let event_loop = EventLoop::new().unwrap();
         let res = event_loop.run_app(self);
+
         match res {
             Ok(_) => println!("App exited successfully"),
             Err(e) => println!("App exited with error: {}", e)
         }
     }
+
+    fn schedule_resize(&mut self, size: PhysicalSize<u32>) {
+        if let Some(task) = self.resize_task.take() {
+            task.abort();
+        }
+
+        let delay = self.app.config.resize_interval;
+        let clone = Arc::clone(self.renderer.as_ref().unwrap());
+
+        self.resize_task = Some(tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
+            let mut renderer = clone.lock().await;
+            renderer.resize(size);
+            renderer.render();
+        }));
+    }
 }
 
-impl ApplicationHandler for ShuiqiApp {
+impl ApplicationHandler for ShuqiIntermediateApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = event_loop.create_window(Window::default_attributes()).unwrap();
 
@@ -60,6 +87,10 @@ impl ApplicationHandler for ShuiqiApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
+                if self.resize_task.is_some() {
+                    return;
+                }
+
                 if let Some(renderer) = &self.renderer {
                     let clone = Arc::clone(renderer);
                     tokio::spawn(async move {
@@ -69,13 +100,7 @@ impl ApplicationHandler for ShuiqiApp {
                 }
             }
             WindowEvent::Resized(size) => {
-                if let Some(renderer) = &self.renderer {
-                    let clone = Arc::clone(renderer);
-                    tokio::spawn(async move {
-                        let mut renderer = clone.lock().await;
-                        renderer.resize(size);
-                    });
-                }
+                self.schedule_resize(size);
             }
             _ => {}
         }
@@ -84,6 +109,7 @@ impl ApplicationHandler for ShuiqiApp {
 
 #[tokio::main]
 async fn main() {
-    let mut app = ShuiqiApp::new();
-    app.start();
+    let mut app = ShuqiApp::default();
+    let mut intermediate = ShuqiIntermediateApp::new(app);
+    intermediate.start();
 }
