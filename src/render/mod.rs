@@ -8,7 +8,7 @@ pub mod wgpu;
 pub trait Renderer<'window> {
     async fn init(window: &'window Window) -> Self;
 
-    async fn render(&self);
+    fn render(&self);
 
-    async fn resize(&mut self, size: PhysicalSize<u32>);
+    fn resize(&mut self, size: PhysicalSize<u32>);
 }

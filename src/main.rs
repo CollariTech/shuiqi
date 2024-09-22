@@ -1,6 +1,10 @@
 mod render;
 mod graphics;
 
+use std::sync::Arc;
+use std::time::Instant;
+use futures::FutureExt;
+use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
@@ -10,8 +14,10 @@ use crate::render::wgpu::WgpuRenderer;
 
 #[derive(Default)]
 struct ShuiqiApp {
+    // This is here only to keep the window alive
     window: Option<Window>,
-    renderer: Option<WgpuRenderer<'static>>,
+    renderer: Option<Arc<Mutex<WgpuRenderer<'static>>>>,
+    last_resize: Option<Instant>
 }
 
 impl ShuiqiApp {
@@ -19,6 +25,7 @@ impl ShuiqiApp {
         ShuiqiApp {
             window: None,
             renderer: None,
+            last_resize: None
         }
     }
 
@@ -40,7 +47,7 @@ impl ApplicationHandler for ShuiqiApp {
             let static_window = unsafe {
                 std::mem::transmute::<&Window, &'static Window>(&window)
             };
-            self.renderer = Some(WgpuRenderer::init(static_window).await);
+            self.renderer = Some(Arc::new(Mutex::new(WgpuRenderer::init(static_window).await)));
         });
         self.window = Some(window);
     }
@@ -54,12 +61,20 @@ impl ApplicationHandler for ShuiqiApp {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = &self.renderer {
-                    futures::executor::block_on(renderer.render());
+                    let clone = Arc::clone(renderer);
+                    tokio::spawn(async move {
+                        let renderer = clone.lock().await;
+                        renderer.render();
+                    });
                 }
             }
             WindowEvent::Resized(size) => {
-                if let Some(renderer) = &mut self.renderer {
-                    futures::executor::block_on(renderer.resize(size));
+                if let Some(renderer) = &self.renderer {
+                    let clone = Arc::clone(renderer);
+                    tokio::spawn(async move {
+                        let mut renderer = clone.lock().await;
+                        renderer.resize(size);
+                    });
                 }
             }
             _ => {}

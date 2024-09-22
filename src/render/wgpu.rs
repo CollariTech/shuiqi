@@ -63,7 +63,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         }
     }
 
-    async fn render(&self) {
+    fn render(&self) {
         println!("Rendering with WGPU");
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(
@@ -81,10 +81,10 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
+                            r: 1.,
+                            g: 0.,
+                            b: 0.,
+                            a: 2.0,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
@@ -98,7 +98,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         output.present();
     }
 
-    async fn resize(&mut self, size: PhysicalSize<u32>) {
+    fn resize(&mut self, size: PhysicalSize<u32>) {
         println!("Resizing WGPU renderer to {}x{}", size.width, size.height);
         self.size = size;
         self.config.width = size.width;
