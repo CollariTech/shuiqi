@@ -1,7 +1,9 @@
 use async_trait::async_trait;
-use wgpu::{Device, DeviceDescriptor, Instance, InstanceDescriptor, Queue, Surface, SurfaceConfiguration, TextureViewDescriptor};
+use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
+use crate::graphics::VERTICES;
 use crate::render::Renderer;
 
 pub struct WgpuRenderer<'window> {
@@ -10,7 +12,11 @@ pub struct WgpuRenderer<'window> {
     size: PhysicalSize<u32>,
     surface: Surface<'window>,
     config: SurfaceConfiguration,
-    window: &'window Window
+    window: &'window Window,
+    render_pipeline: RenderPipeline,
+    vertex_buffer: Buffer,
+    index_buffer: Buffer,
+    vertices: u32
 }
 
 #[async_trait(?Send)]
@@ -51,7 +57,25 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         };
         surface.configure(&device, &config);
 
-        println!("Device created: {:?}", device);
+        let pipeline = crate::graphics::pipeline::create_shaders_pipeline(
+            &device
+        );
+
+        let vertex_buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(VERTICES),
+                usage: wgpu::BufferUsages::VERTEX
+            }
+        );
+
+        let index_buffer = device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&[0u16, 1, 2, 2, 3, 0]),
+                usage: wgpu::BufferUsages::INDEX
+            }
+        );
 
         WgpuRenderer {
             device,
@@ -59,7 +83,11 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             surface,
             window,
             config,
-            size
+            size,
+            render_pipeline: pipeline,
+            vertex_buffer,
+            index_buffer,
+            vertices: VERTICES.len() as u32
         }
     }
 
@@ -74,17 +102,17 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             &wgpu::CommandEncoderDescriptor::default()
         );
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.,
-                            g: 0.,
-                            b: 0.,
-                            a: 2.0,
+                            r: 0.0117647059,
+                            g: 0.7890625,
+                            b: 0.984375,
+                            a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
@@ -93,12 +121,21 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+            render_pass.draw(0..self.vertices, 0..1);
         }
+
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
     }
 
     fn resize(&mut self, size: PhysicalSize<u32>) {
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+
         println!("Resizing WGPU renderer to {}x{}", size.width, size.height);
         self.size = size;
         self.config.width = size.width;
