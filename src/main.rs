@@ -1,4 +1,5 @@
 mod render;
+mod graphics;
 
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -52,9 +53,13 @@ impl ApplicationHandler for ShuiqiApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                println!("Redraw requested");
                 if let Some(renderer) = &self.renderer {
                     futures::executor::block_on(renderer.render());
+                }
+            }
+            WindowEvent::Resized(size) => {
+                if let Some(renderer) = &mut self.renderer {
+                    futures::executor::block_on(renderer.resize(size));
                 }
             }
             _ => {}
