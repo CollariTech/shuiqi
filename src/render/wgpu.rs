@@ -95,7 +95,8 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         let surface_format = surface_caps.formats.iter()
             .find(|format| format.is_srgb())
             .copied()
-            .unwrap_or_else(|| surface_caps.formats[0]);
+            .unwrap_or_else(|| surface_caps.formats[0])
+            .add_srgb_suffix();
 
         let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,

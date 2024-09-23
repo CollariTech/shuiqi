@@ -31,6 +31,6 @@ pub fn get_measurement_screen_percentage(
 ) -> f32 {
     match measurement {
         Measurement::Pixels(value) => value / screen_size as f32,
-        Measurement::Percentage(percent) => *percent
+        Measurement::Percentage(percent) => percent / 50.0 - 1.0
     }
 }

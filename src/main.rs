@@ -68,8 +68,8 @@ impl ShuqiIntermediateApp {
             let designer = Designer::new();
             designer.create_rectangle(
                 &mut renderer,
-                Point::new(Measurement::Percentage(0.2), Measurement::Percentage(0.2)),
-                Point::new(Measurement::Percentage(0.5), Measurement::Percentage(0.5))
+                Point::new(Measurement::Percentage(0.0), Measurement::Percentage(100.0)),
+                Point::new(Measurement::Percentage(100.0), Measurement::Percentage(95.0))
             );
 
             renderer.resize(size);
