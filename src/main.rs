@@ -75,7 +75,7 @@ impl ShuqiIntermediateApp {
             );
             renderer.add_instance(
                 triangle,
-                [0.0, 0.0 * thread_rng().gen_range(0.0..1.0)],
+                [0.0, thread_rng().gen_range(-1.0..1.0)],
                 [1.0, 1.0]
             );
 
