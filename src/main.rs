@@ -1,20 +1,22 @@
 mod render;
 mod graphics;
 mod config;
+mod designer;
 
 use crate::config::ShuiqiOptions;
-use crate::graphics::instance::Shape;
+use crate::designer::Designer;
 use crate::render::wgpu::WgpuRenderer;
 use crate::render::Renderer;
 use futures::FutureExt;
+use rand::Rng;
 use std::sync::Arc;
-use rand::{thread_rng, Rng};
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
+use crate::designer::point::{Measurement, Point};
 
 #[derive(Default)]
 pub struct ShuqiApp {
@@ -63,20 +65,11 @@ impl ShuqiIntermediateApp {
             tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
             let mut renderer = clone.lock().await;
 
-            let triangle = renderer.create_shape(
-                Shape {
-                    vertices: vec![
-                        graphics::Vertex::new([0.0, 0.5], [1.0, 0.0, 0.0]),
-                        graphics::Vertex::new([-0.5, -0.5], [0.0, 1.0, 0.0]),
-                        graphics::Vertex::new([0.5, -0.5], [0.0, 0.0, 1.0])
-                    ],
-                    indices: vec![0, 1, 2]
-                }
-            );
-            renderer.add_instance(
-                triangle,
-                [0.0, thread_rng().gen_range(-1.0..1.0)],
-                [1.0, 1.0]
+            let designer = Designer::new();
+            designer.create_rectangle(
+                &mut renderer,
+                Point::new(Measurement::Percentage(0.2), Measurement::Percentage(0.2)),
+                Point::new(Measurement::Percentage(0.5), Measurement::Percentage(0.5))
             );
 
             renderer.resize(size);
@@ -93,7 +86,10 @@ impl ApplicationHandler for ShuqiIntermediateApp {
             let static_window = unsafe {
                 std::mem::transmute::<&Window, &'static Window>(&window)
             };
-            self.renderer = Some(Arc::new(Mutex::new(WgpuRenderer::init(static_window).await)));
+            let renderer = WgpuRenderer::init(static_window).await;
+
+
+            self.renderer = Some(Arc::new(Mutex::new(renderer)));
         });
         self.window = Some(window);
     }

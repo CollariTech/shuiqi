@@ -4,13 +4,12 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 use crate::graphics::instance::{InstanceData, ObjectInstance, Shape, ShapeData};
-use crate::graphics::square;
 use crate::render::Renderer;
 
 pub struct WgpuRenderer<'window> {
     device: Device,
     queue: Queue,
-    size: PhysicalSize<u32>,
+    pub size: PhysicalSize<u32>,
     surface: Surface<'window>,
     config: SurfaceConfiguration,
     window: &'window Window,
