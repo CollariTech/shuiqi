@@ -3,7 +3,7 @@ use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDesc
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
-use crate::graphics::VERTICES;
+use crate::graphics::square;
 use crate::render::Renderer;
 
 pub struct WgpuRenderer<'window> {
@@ -16,7 +16,7 @@ pub struct WgpuRenderer<'window> {
     render_pipeline: RenderPipeline,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    vertices: u32
+    indices_count: u32
 }
 
 #[async_trait(?Send)]
@@ -61,10 +61,11 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             &device
         );
 
+        let (vertices, indices) = square();
         let vertex_buffer = device.create_buffer_init(
             &BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
+                contents: bytemuck::cast_slice(vertices),
                 usage: wgpu::BufferUsages::VERTEX
             }
         );
@@ -72,7 +73,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         let index_buffer = device.create_buffer_init(
             &BufferInitDescriptor {
                 label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(&[0u16, 1, 2, 2, 3, 0]),
+                contents: bytemuck::cast_slice(indices),
                 usage: wgpu::BufferUsages::INDEX
             }
         );
@@ -87,7 +88,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             render_pipeline: pipeline,
             vertex_buffer,
             index_buffer,
-            vertices: VERTICES.len() as u32
+            indices_count: indices.len() as u32
         }
     }
 
@@ -124,7 +125,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.draw(0..self.vertices, 0..1);
+            render_pass.draw_indexed(0..self.indices_count, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
