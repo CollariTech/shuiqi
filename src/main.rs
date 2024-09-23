@@ -2,17 +2,19 @@ mod render;
 mod graphics;
 mod config;
 
-use std::sync::Arc;
+use crate::config::ShuiqiOptions;
+use crate::graphics::instance::Shape;
+use crate::render::wgpu::WgpuRenderer;
+use crate::render::Renderer;
 use futures::FutureExt;
+use std::sync::Arc;
+use rand::{thread_rng, Rng};
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
-use crate::config::ShuiqiOptions;
-use crate::render::Renderer;
-use crate::render::wgpu::WgpuRenderer;
 
 #[derive(Default)]
 pub struct ShuqiApp {
@@ -21,11 +23,11 @@ pub struct ShuqiApp {
 
 #[derive(Default)]
 struct ShuqiIntermediateApp {
-    app: ShuqiApp,
-    window: Option<Window>,
-    renderer: Option<Arc<Mutex<WgpuRenderer<'static>>>>,
-    allow_resize: bool,
-    resize_task: Option<tokio::task::JoinHandle<()>>
+    pub app: ShuqiApp,
+    pub window: Option<Window>,
+    pub renderer: Option<Arc<Mutex<WgpuRenderer<'static>>>>,
+    pub allow_resize: bool,
+    pub resize_task: Option<tokio::task::JoinHandle<()>>
 }
 
 impl ShuqiIntermediateApp {
@@ -60,6 +62,23 @@ impl ShuqiIntermediateApp {
         self.resize_task = Some(tokio::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
             let mut renderer = clone.lock().await;
+
+            let triangle = renderer.create_shape(
+                Shape {
+                    vertices: vec![
+                        graphics::Vertex::new([0.0, 0.5], [1.0, 0.0, 0.0]),
+                        graphics::Vertex::new([-0.5, -0.5], [0.0, 1.0, 0.0]),
+                        graphics::Vertex::new([0.5, -0.5], [0.0, 0.0, 1.0])
+                    ],
+                    indices: vec![0, 1, 2]
+                }
+            );
+            renderer.add_instance(
+                triangle,
+                [0.0, 0.0 * thread_rng().gen_range(0.0..1.0)],
+                [1.0, 1.0]
+            );
+
             renderer.resize(size);
             renderer.render();
         }));

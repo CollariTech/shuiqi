@@ -3,6 +3,7 @@ use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDesc
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
+use crate::graphics::instance::{InstanceData, ObjectInstance, Shape, ShapeData};
 use crate::graphics::square;
 use crate::render::Renderer;
 
@@ -14,9 +15,61 @@ pub struct WgpuRenderer<'window> {
     config: SurfaceConfiguration,
     window: &'window Window,
     render_pipeline: RenderPipeline,
-    vertex_buffer: Buffer,
-    index_buffer: Buffer,
-    indices_count: u32
+    instances: Vec<ObjectInstance>,
+    instance_buffer: Buffer
+}
+
+impl<'window> WgpuRenderer<'window> {
+    pub fn add_instance(&mut self, shape: ShapeData, position: [f32; 2], scale: [f32; 2]) {
+        let instance_data = InstanceData::new(position, scale);
+        self.instances.push(ObjectInstance::new(shape, instance_data));
+        println!("Added instance: position: {:?}, scale: {:?}", position, scale);
+        self.update_instance_buffer();
+        println!("Total instances: {}", self.instances.len());
+    }
+
+    pub fn update_instance_buffer(&mut self) {
+        let instance_data: Vec<_> = self.instances.iter().map(|i| i.data).collect();
+        let buffer_size = instance_data.len() as u64 * std::mem::size_of::<InstanceData>() as u64;
+
+        println!("Updating instance buffer with {} instances", instance_data.len());
+        if self.instance_buffer.size() < buffer_size {
+            println!("Resizing instance buffer to {}", buffer_size);
+            self.instance_buffer = self.device.create_buffer_init(
+                &BufferInitDescriptor {
+                    label: Some("Instance Buffer"),
+                    contents: bytemuck::cast_slice(&instance_data),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                },
+            );
+        } else {
+            self.queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&instance_data));
+        }
+    }
+
+    pub fn create_shape(&self, shape: Shape) -> ShapeData {
+        let vertex_buffer = self.device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(&shape.vertices),
+                usage: wgpu::BufferUsages::VERTEX
+            }
+        );
+
+        let index_buffer = self.device.create_buffer_init(
+            &BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&shape.indices),
+                usage: wgpu::BufferUsages::INDEX
+            }
+        );
+
+        ShapeData {
+            vertex_buffer,
+            index_buffer,
+            indices_count: shape.indices.len() as u32
+        }
+    }
 }
 
 #[async_trait(?Send)]
@@ -57,25 +110,16 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         };
         surface.configure(&device, &config);
 
-        let pipeline = crate::graphics::pipeline::create_shaders_pipeline(
+        let pipeline = crate::graphics::pipeline::create_instance_pipeline(
             &device
         );
 
-        let (vertices, indices) = square();
-        let vertex_buffer = device.create_buffer_init(
+        let instance_buffer = device.create_buffer_init(
             &BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertices),
-                usage: wgpu::BufferUsages::VERTEX
-            }
-        );
-
-        let index_buffer = device.create_buffer_init(
-            &BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(indices),
-                usage: wgpu::BufferUsages::INDEX
-            }
+                label: Some("Instance Buffer"),
+                contents: &[],
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            },
         );
 
         WgpuRenderer {
@@ -86,9 +130,8 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             config,
             size,
             render_pipeline: pipeline,
-            vertex_buffer,
-            index_buffer,
-            indices_count: indices.len() as u32
+            instances: vec![],
+            instance_buffer
         }
     }
 
@@ -122,10 +165,18 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.indices_count, 0, 0..1);
+
+            // Set the instance buffer for all instances at once
+            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+
+            // Draw all instances in a single call
+            if let Some(first_instance) = self.instances.first() {
+                render_pass.set_vertex_buffer(0, first_instance.shape.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(first_instance.shape.index_buffer.slice(..), IndexFormat::Uint16);
+                render_pass.draw_indexed(0..first_instance.shape.indices_count, 0, 0..self.instances.len() as u32);
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

@@ -5,8 +5,9 @@ edition = "2021"
 
 [dependencies]
 wgpu = "22.1.0"
-winit = "0.30.5"
+winit = { version="0.30.5", features=["rwh_05"] }
 async-trait = "0.1.82"
+rand = "0.8.5"
 futures = "0.3.30"
 bytemuck = { version = "1.18.0", features = ["derive"] }
 tokio = { version = "1.40.0", features = ["full"] }

@@ -1,6 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 
 pub mod pipeline;
+pub mod instance;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -10,6 +11,10 @@ pub struct Vertex {
 }
 
 impl Vertex {
+    pub fn new(position: [f32; 2], color: [f32; 3]) -> Self {
+        Vertex { position, color }
+    }
+
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
