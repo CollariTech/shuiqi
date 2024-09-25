@@ -16,40 +16,36 @@ impl Designer {
     pub fn create_rectangle(
         &self,
         renderer: &mut WgpuRenderer,
-        first: Point,
-        second: Point
+        position: Point,
+        width: Measurement,
+        height: Measurement,
+        color: [f32; 3]
     ) {
-        let first_percentages = first.get_screen_position(renderer.size);
-        let first_x = first_percentages[0];
-        let first_y = first_percentages[1];
+        let position_percentages = position.get_screen_position(renderer.size);
+        let pos_x = position_percentages[0];
+        let pos_y = position_percentages[1];
 
-        let second_percentages = second.get_screen_position(renderer.size);
-        let second_x = second_percentages[0];
-        let second_y = second_percentages[1];
+        let width_percentage = get_measurement_screen_percentage(&width, renderer.size.width);
+        let height_percentage = get_measurement_screen_percentage(&height, renderer.size.height);
 
-        let color = [0.5, 0.5, 0.5];
         let top_left = Vertex::new(
             [
-                Self::min(first_x, second_x),
-                Self::max(first_y, second_y)
+                width_percentage, height_percentage
             ], color
         );
         let top_right = Vertex::new(
             [
-                Self::max(first_x, second_x),
-                Self::max(first_y, second_y)
+                -width_percentage, height_percentage
             ], color
         );
         let bottom_left = Vertex::new(
             [
-                Self::min(first_x, second_x),
-                Self::min(first_y, second_y)
+                width_percentage, -height_percentage
             ], color
         );
         let bottom_right = Vertex::new(
             [
-                Self::max(first_x, second_x),
-                Self::min(first_y, second_y)
+                -width_percentage, -height_percentage
             ], color
         );
 
@@ -65,6 +61,7 @@ impl Designer {
             1, 3, 0,
             0, 2, 1
         ];
+
         println!("{:?}", indices);
         let shape = renderer.create_shape(
             Shape {
@@ -74,7 +71,7 @@ impl Designer {
         );
         renderer.add_instance(
             shape,
-            [0.0, 0.0],
+            position_percentages,
             [1.0, 1.0]
         )
     }

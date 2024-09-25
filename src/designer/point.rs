@@ -18,7 +18,7 @@ impl Point {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Measurement {
     Pixels(f32),
     Percentage(f32)

@@ -22,7 +22,6 @@ impl<'window> WgpuRenderer<'window> {
     pub fn add_instance(&mut self, shape: ShapeData, position: [f32; 2], scale: [f32; 2]) {
         let instance_data = InstanceData::new(position, scale);
         self.instances.push(ObjectInstance::new(shape, instance_data));
-        println!("Added instance: position: {:?}, scale: {:?}", position, scale);
         self.update_instance_buffer();
         println!("Total instances: {}", self.instances.len());
     }
@@ -33,7 +32,6 @@ impl<'window> WgpuRenderer<'window> {
 
         println!("Updating instance buffer with {} instances", instance_data.len());
         if self.instance_buffer.size() < buffer_size {
-            println!("Resizing instance buffer to {}", buffer_size);
             self.instance_buffer = self.device.create_buffer_init(
                 &BufferInitDescriptor {
                     label: Some("Instance Buffer"),
