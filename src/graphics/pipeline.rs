@@ -19,7 +19,7 @@ pub fn create_instance_pipeline(device: &Device) -> RenderPipeline {
         layout: Some(&pipeline_layout),
         vertex: wgpu::VertexState {
             module: &shader,
-            entry_point: "vs_main",
+            entry_point: Some("vs_main"),
             compilation_options: Default::default(),
             buffers: &[
                 Vertex::desc(),
@@ -28,7 +28,7 @@ pub fn create_instance_pipeline(device: &Device) -> RenderPipeline {
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
-            entry_point: "fs_main",
+            entry_point: Some("fs_main"),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
@@ -73,7 +73,7 @@ pub fn create_vertex_pipeline(device: &Device) -> RenderPipeline {
         layout: Some(&pipeline_layout),
         vertex: wgpu::VertexState {
             module: &shader,
-            entry_point: "vs_main",
+            entry_point: Some("vs_main"),
             compilation_options: Default::default(),
             buffers: &[
                 Vertex::desc()
@@ -81,7 +81,7 @@ pub fn create_vertex_pipeline(device: &Device) -> RenderPipeline {
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
-            entry_point: "fs_main",
+            entry_point: Some("fs_main"),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,

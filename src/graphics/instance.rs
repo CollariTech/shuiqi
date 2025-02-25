@@ -1,5 +1,6 @@
 use std::mem::size_of;
 use bytemuck::{Pod, Zeroable};
+use glyphon::{Color, TextBounds};
 use wgpu::Buffer;
 use crate::graphics::Vertex;
 
@@ -17,7 +18,7 @@ impl InstanceData {
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<InstanceData>() as wgpu::BufferAddress,
+            array_stride: size_of::<InstanceData>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -50,6 +51,24 @@ pub struct ShapeData {
 pub struct ObjectInstance {
     pub shape: ShapeData,
     pub data: InstanceData
+}
+
+#[derive(Clone, Debug)]
+pub struct TextInstance {
+    pub content: String,
+    pub font_family: glyphon::Family<'static>,
+    pub font_size: f32,
+    pub line_height: f32,
+    pub text_area: TextInstanceArea
+}
+
+#[derive(Clone, Debug)]
+pub struct TextInstanceArea {
+    pub left: f32,
+    pub top: f32,
+    pub scale: f32,
+    pub bounds: TextBounds,
+    pub color: [u8; 4]
 }
 
 impl ObjectInstance {

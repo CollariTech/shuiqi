@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 use async_trait::async_trait;
-use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
+use glyphon::{Color, FontSystem, SwashCache, TextArea, TextAtlas, TextRenderer};
+use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, MultisampleState, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
-use crate::graphics::instance::{InstanceData, ObjectInstance, Shape, ShapeData};
+use crate::graphics::instance::{InstanceData, ObjectInstance, Shape, ShapeData, TextInstance};
 use crate::render::Renderer;
 
 pub struct WgpuRenderer<'window> {
@@ -15,7 +17,13 @@ pub struct WgpuRenderer<'window> {
     window: &'window Window,
     render_pipeline: RenderPipeline,
     instances: Vec<ObjectInstance>,
-    instance_buffer: Buffer
+    instance_buffer: Buffer,
+    pub(crate) font_system: FontSystem,
+    swash_cache: SwashCache,
+    text_renderer: TextRenderer,
+    text_areas: Vec<glyphon::TextArea<'static>>,
+    text_atlas: TextAtlas,
+    viewport: glyphon::Viewport
 }
 
 impl<'window> WgpuRenderer<'window> {
@@ -67,6 +75,33 @@ impl<'window> WgpuRenderer<'window> {
             indices_count: shape.indices.len() as u32
         }
     }
+
+    pub fn add_text(&mut self, text: TextInstance) {
+        let mut text_buffer = Box::leak(Box::new(glyphon::Buffer::new(
+            &mut self.font_system,
+            glyphon::Metrics::new(text.font_size, text.line_height)
+        )));
+        text_buffer.set_text(
+            &mut self.font_system,
+            &text.content,
+            glyphon::Attrs::new().family(text.font_family),
+            glyphon::Shaping::Advanced
+        );
+        self.text_areas.push(TextArea {
+            buffer: text_buffer,
+            left: text.text_area.left,
+            top: text.text_area.top,
+            scale: text.text_area.scale,
+            bounds: text.text_area.bounds,
+            default_color: Color::rgba(
+                text.text_area.color[0],
+                text.text_area.color[1],
+                text.text_area.color[2],
+                text.text_area.color[3]
+            ),
+            custom_glyphs: &[]
+        });
+    }
 }
 
 #[async_trait(?Send)]
@@ -75,7 +110,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         println!("Initializing WGPU renderer");
         let size = window.inner_size();
 
-        let instance = Instance::new(InstanceDescriptor::default());
+        let instance = Instance::new(&InstanceDescriptor::default());
         let surface = instance.create_surface(window).unwrap();
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
@@ -120,6 +155,19 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             },
         );
 
+        let mut font_system = FontSystem::new();
+        let swash_cache = SwashCache::new();
+        let cache = glyphon::Cache::new(&device);
+        let viewport = glyphon::Viewport::new(&device, &cache);
+        let mut text_atlas = TextAtlas::new(&device, &queue, &cache, surface_format);
+
+        let text_renderer = TextRenderer::new(
+            &mut text_atlas,
+            &device,
+            MultisampleState::default(),
+            None
+        );
+
         WgpuRenderer {
             device,
             queue,
@@ -128,17 +176,45 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             config,
             size,
             render_pipeline: pipeline,
-            instances: vec![],
-            instance_buffer
+            instances: Vec::new(),
+            instance_buffer,
+            text_renderer,
+            font_system,
+            swash_cache,
+            text_areas: Vec::new(),
+            text_atlas,
+            viewport
         }
     }
 
-    fn render(&self) {
+    fn render(&mut self) {
         println!("Rendering with WGPU");
         let output = self.surface.get_current_texture().unwrap();
         let view = output.texture.create_view(
             &TextureViewDescriptor::default()
         );
+        self.viewport.update(&self.queue, glyphon::Resolution {
+            width: self.size.width,
+            height: self.size.height,
+        });
+
+        let text_areas = self
+            .text_areas
+            .iter()
+            .map(|area| area.clone())
+            .collect::<Vec<TextArea<'static>>>();
+        match self.text_renderer.prepare(
+            &self.device,
+            &self.queue,
+            &mut self.font_system,
+            &mut self.text_atlas,
+            &mut self.viewport,
+            text_areas,
+            &mut self.swash_cache,
+        ) {
+            Ok(_) => println!("Text renderer prepared"),
+            Err(e) => eprintln!("Error preparing text renderer: {:?}", e),
+        }
 
         let mut encoder = self.device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor::default()
@@ -166,14 +242,21 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
 
             render_pass.set_pipeline(&self.render_pipeline);
 
-            // Set the instance buffer for all instances at once
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
-            // Draw all instances in a single call
             if let Some(first_instance) = self.instances.first() {
                 render_pass.set_vertex_buffer(0, first_instance.shape.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(first_instance.shape.index_buffer.slice(..), IndexFormat::Uint16);
                 render_pass.draw_indexed(0..first_instance.shape.indices_count, 0, 0..self.instances.len() as u32);
+            }
+
+            match self.text_renderer.render(
+                &self.text_atlas,
+                &self.viewport,
+                &mut render_pass
+            ) {
+                Ok(_) => println!("Text renderer rendered"),
+                Err(e) => eprintln!("Error rendering text: {:?}", e),
             }
         }
 

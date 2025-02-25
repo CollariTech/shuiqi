@@ -10,6 +10,7 @@ use crate::render::Renderer;
 use futures::FutureExt;
 use rand::Rng;
 use std::sync::Arc;
+use glyphon::{Family, TextBounds};
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -17,6 +18,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
 use crate::designer::point::{Measurement, Point};
+use crate::graphics::instance::{TextInstance, TextInstanceArea};
 
 #[derive(Default)]
 pub struct ShuqiApp {
@@ -65,13 +67,24 @@ impl ShuqiIntermediateApp {
             tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
             let mut renderer = clone.lock().await;
 
-            let designer = Designer::new();
+            let mut designer = Designer::new();
             designer.create_anchored_rectangle(
                 &mut renderer,
                 Point::from_pixels(0.0, 0.0),
                 Measurement::Percentage(50.0),
                 Measurement::Pixels(50.0),
                 [0.0, 0.0, 1.0]
+            );
+
+            designer.create_text(
+                &mut renderer,
+                Point::from_percentage(50.0, 50.0),
+                "Hello, world!",
+                Family::SansSerif,
+                48.0,
+                1.0,
+                None,
+                [0, 0, 0, 255],
             );
 
             renderer.resize(size);
@@ -111,7 +124,7 @@ impl ApplicationHandler for ShuqiIntermediateApp {
                 if let Some(renderer) = &self.renderer {
                     let clone = Arc::clone(renderer);
                     tokio::spawn(async move {
-                        let renderer = clone.lock().await;
+                        let mut renderer = clone.lock().await;
                         renderer.render();
                     });
                 }
