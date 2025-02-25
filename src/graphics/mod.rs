@@ -34,24 +34,3 @@ impl Vertex {
         }
     }
 }
-
-
-const COLOR: [f32; 3] = [0.5, 0.5, 0.5];
-
-pub fn square() -> (&'static [Vertex], &'static [u16]) {
-    let vertices: &[Vertex] = &[
-        Vertex { position: [-0.8, 0.8], color: COLOR },
-        Vertex { position: [0.8, 0.8], color: COLOR },
-        Vertex { position: [0.8, -0.8], color: COLOR },
-        Vertex { position: [-0.8, -0.8], color: COLOR }
-    ];
-
-    let indices: &[u16] = &[
-        1, 0, 3,
-        3, 2, 1
-    ];
-
-    unsafe {
-        (std::mem::transmute(vertices), std::mem::transmute(indices))
-    }
-}

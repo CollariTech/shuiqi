@@ -1,12 +1,11 @@
-use std::collections::HashMap;
-use async_trait::async_trait;
-use glyphon::{Color, FontSystem, SwashCache, TextArea, TextAtlas, TextRenderer};
-use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, MultisampleState, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use winit::dpi::PhysicalSize;
-use winit::window::Window;
 use crate::graphics::instance::{InstanceData, ObjectInstance, Shape, ShapeData, TextInstance};
 use crate::render::Renderer;
+use async_trait::async_trait;
+use glyphon::{Color, FontSystem, SwashCache, TextArea, TextAtlas, TextRenderer};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, MultisampleState, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
+use winit::dpi::PhysicalSize;
+use winit::window::Window;
 
 pub struct WgpuRenderer<'window> {
     device: Device,
@@ -77,7 +76,7 @@ impl<'window> WgpuRenderer<'window> {
     }
 
     pub fn add_text(&mut self, text: TextInstance) {
-        let mut text_buffer = Box::leak(Box::new(glyphon::Buffer::new(
+        let text_buffer = Box::leak(Box::new(glyphon::Buffer::new(
             &mut self.font_system,
             glyphon::Metrics::new(text.font_size, text.line_height)
         )));
@@ -87,6 +86,7 @@ impl<'window> WgpuRenderer<'window> {
             glyphon::Attrs::new().family(text.font_family),
             glyphon::Shaping::Advanced
         );
+        println!("Adding text to position ({}, {})", text.text_area.left, text.text_area.top);
         self.text_areas.push(TextArea {
             buffer: text_buffer,
             left: text.text_area.left,
@@ -155,7 +155,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             },
         );
 
-        let mut font_system = FontSystem::new();
+        let font_system = FontSystem::new();
         let swash_cache = SwashCache::new();
         let cache = glyphon::Cache::new(&device);
         let viewport = glyphon::Viewport::new(&device, &cache);
@@ -274,5 +274,10 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         self.config.width = size.width;
         self.config.height = size.height;
         self.surface.configure(&self.device, &self.config);
+    }
+
+    fn reset(&mut self) {
+        self.instances.clear();
+        self.text_areas.clear()
     }
 }

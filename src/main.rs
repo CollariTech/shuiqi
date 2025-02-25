@@ -4,21 +4,19 @@ mod config;
 mod designer;
 
 use crate::config::ShuiqiOptions;
+use crate::designer::color::Color;
+use crate::designer::point::{Measurement, Point};
 use crate::designer::Designer;
 use crate::render::wgpu::WgpuRenderer;
 use crate::render::Renderer;
-use futures::FutureExt;
-use rand::Rng;
+use glyphon::Family;
 use std::sync::Arc;
-use glyphon::{Family, TextBounds};
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
-use crate::designer::point::{Measurement, Point};
-use crate::graphics::instance::{TextInstance, TextInstanceArea};
 
 #[derive(Default)]
 pub struct ShuqiApp {
@@ -66,28 +64,29 @@ impl ShuqiIntermediateApp {
         self.resize_task = Some(tokio::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
             let mut renderer = clone.lock().await;
+            renderer.reset();
+            renderer.resize(size);
 
-            let mut designer = Designer::new();
+            let designer = Designer::new();
             designer.create_anchored_rectangle(
                 &mut renderer,
-                Point::from_pixels(0.0, 0.0),
-                Measurement::Percentage(50.0),
-                Measurement::Pixels(50.0),
-                [0.0, 0.0, 1.0]
+                Point::from_pixels(12.0, 12.0), // 12-12 de distancia do topo
+                Measurement::Percentage(50.0), // 50% da tela
+                Measurement::Pixels(50.0), // 50 pixels de altura
+                Color::new(255, 0, 0) // vermelho
             );
 
             designer.create_text(
                 &mut renderer,
-                Point::from_percentage(50.0, 50.0),
-                "Hello, world!",
-                Family::SansSerif,
-                48.0,
-                1.0,
+                Point::from_percentage(50.0, 50.0), // Meio da tela
+                "Hello, world!", // Texto
+                Family::Name("Roboto"), // Fonte
+                48.0, // Tamanho
+                1.0, // Linha
                 None,
-                [0, 0, 0, 255],
+                Color::new(0, 0, 0) // Preto
             );
 
-            renderer.resize(size);
             renderer.render();
         }));
     }
@@ -110,7 +109,7 @@ impl ApplicationHandler for ShuqiIntermediateApp {
     }
 
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
                 println!("Closing app");
@@ -139,7 +138,7 @@ impl ApplicationHandler for ShuqiIntermediateApp {
 
 #[tokio::main]
 async fn main() {
-    let mut app = ShuqiApp::default();
+    let app = ShuqiApp::default();
     let mut intermediate = ShuqiIntermediateApp::new(app);
     intermediate.start();
 }

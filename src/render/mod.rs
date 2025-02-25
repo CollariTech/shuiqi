@@ -11,4 +11,6 @@ pub trait Renderer<'window> {
     fn render(&mut self);
 
     fn resize(&mut self, size: PhysicalSize<u32>);
+
+    fn reset(&mut self);
 }

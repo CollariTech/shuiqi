@@ -1,8 +1,8 @@
-use std::mem::size_of;
-use bytemuck::{Pod, Zeroable};
-use glyphon::{Color, TextBounds};
-use wgpu::Buffer;
 use crate::graphics::Vertex;
+use bytemuck::{Pod, Zeroable};
+use glyphon::TextBounds;
+use std::mem::size_of;
+use wgpu::Buffer;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]

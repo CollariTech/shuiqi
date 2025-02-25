@@ -1,10 +1,11 @@
 pub mod point;
+pub mod color;
 
 use glyphon::{Family, TextBounds};
+use crate::designer::color::Color;
 use crate::designer::point::{Measurement, Point};
 use crate::graphics::instance::{Shape, TextInstance, TextInstanceArea};
 use crate::graphics::Vertex;
-use crate::render::Renderer;
 use crate::render::wgpu::WgpuRenderer;
 
 pub struct Designer;
@@ -20,7 +21,7 @@ impl Designer {
         center: Point,
         width: Measurement,
         height: Measurement,
-        color: [f32; 3]
+        color: Color
     ) {
         let [center_x, center_y] = center.to_ndc(renderer.size);
         let width_pixels = width.to_size(renderer.size.width);
@@ -29,12 +30,13 @@ impl Designer {
         let height_ndc = height_pixels / renderer.size.height as f32 * 2.0;
         let half_width = width_ndc / 2.0;
         let half_height = height_ndc / 2.0;
+        let rgb = color.into_rgb_array();
 
         let vertices = vec![
-            Vertex::new([center_x - half_width, center_y + half_height], color),
-            Vertex::new([center_x + half_width, center_y + half_height], color),
-            Vertex::new([center_x - half_width, center_y - half_height], color),
-            Vertex::new([center_x + half_width, center_y - half_height], color),
+            Vertex::new([center_x - half_width, center_y + half_height], rgb),
+            Vertex::new([center_x + half_width, center_y + half_height], rgb),
+            Vertex::new([center_x - half_width, center_y - half_height], rgb),
+            Vertex::new([center_x + half_width, center_y - half_height], rgb),
         ];
 
         let indices = vec![
@@ -52,7 +54,7 @@ impl Designer {
         top_left: Point,
         width: Measurement,
         height: Measurement,
-        color: [f32; 3]
+        color: Color
     ) {
         let [x, y] = top_left.to_screen_space(renderer.size);
         let width_px = width.to_size(renderer.size.width);
@@ -72,7 +74,7 @@ impl Designer {
         font_size: f32,
         line_height: f32,
         bounds: Option<(Measurement, Measurement)>,
-        color: [u8; 4],
+        color: Color,
     ) {
         let [x, y] = anchor.to_screen_space(renderer.size);
         let content_str = content.into();
@@ -124,7 +126,7 @@ impl Designer {
                     right: renderer.size.width as i32,
                     bottom: renderer.size.height as i32,
                 },
-                color,
+                color: color.into_rgba_bytes()
             },
         };
 
