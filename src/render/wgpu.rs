@@ -22,7 +22,8 @@ pub struct WgpuRenderer<'window> {
     text_renderer: TextRenderer,
     text_areas: Vec<glyphon::TextArea<'static>>,
     text_atlas: TextAtlas,
-    viewport: glyphon::Viewport
+    viewport: glyphon::Viewport,
+    next_shape_id: u32
 }
 
 impl<'window> WgpuRenderer<'window> {
@@ -34,24 +35,25 @@ impl<'window> WgpuRenderer<'window> {
     }
 
     pub fn update_instance_buffer(&mut self) {
+        self.instances.sort_by_key(|instance| instance.shape.shape_id);
         let instance_data: Vec<_> = self.instances.iter().map(|i| i.data).collect();
-        let buffer_size = instance_data.len() as u64 * std::mem::size_of::<InstanceData>() as u64;
 
-        println!("Updating instance buffer with {} instances", instance_data.len());
+        let buffer_size = (instance_data.len() * std::mem::size_of::<InstanceData>()) as u64;
         if self.instance_buffer.size() < buffer_size {
-            self.instance_buffer = self.device.create_buffer_init(
-                &BufferInitDescriptor {
-                    label: Some("Instance Buffer"),
-                    contents: bytemuck::cast_slice(&instance_data),
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                },
-            );
+            self.instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(&instance_data),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            });
         } else {
             self.queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&instance_data));
         }
     }
 
-    pub fn create_shape(&self, shape: Shape) -> ShapeData {
+    pub fn create_shape(&mut self, shape: Shape) -> ShapeData {
+        let shape_id = self.next_shape_id;
+        self.next_shape_id += 1;
+
         let vertex_buffer = self.device.create_buffer_init(
             &BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
@@ -69,6 +71,7 @@ impl<'window> WgpuRenderer<'window> {
         );
 
         ShapeData {
+            shape_id,
             vertex_buffer,
             index_buffer,
             indices_count: shape.indices.len() as u32
@@ -183,7 +186,8 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             swash_cache,
             text_areas: Vec::new(),
             text_atlas,
-            viewport
+            viewport,
+            next_shape_id: 0
         }
     }
 
@@ -241,13 +245,29 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
-            if let Some(first_instance) = self.instances.first() {
-                render_pass.set_vertex_buffer(0, first_instance.shape.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(first_instance.shape.index_buffer.slice(..), IndexFormat::Uint16);
-                render_pass.draw_indexed(0..first_instance.shape.indices_count, 0, 0..self.instances.len() as u32);
+            let mut current_shape: Option<&ShapeData> = None;
+            let mut start = 0;
+            for (i, instance) in self.instances.iter().enumerate() {
+                if current_shape != Some(&instance.shape) {
+                    if let Some(shape) = current_shape {
+                        render_pass.set_vertex_buffer(0, shape.vertex_buffer.slice(..));
+                        render_pass.set_index_buffer(shape.index_buffer.slice(..), IndexFormat::Uint16);
+                        render_pass.draw_indexed(0..shape.indices_count, 0, start as u32..i as u32);
+                    }
+                    current_shape = Some(&instance.shape);
+                    start = i;
+                }
+            }
+            if let Some(shape) = current_shape {
+                render_pass.set_vertex_buffer(0, shape.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(shape.index_buffer.slice(..), IndexFormat::Uint16);
+                render_pass.draw_indexed(
+                    0..shape.indices_count,
+                    0,
+                    start as u32..self.instances.len() as u32,
+                );
             }
 
             match self.text_renderer.render(

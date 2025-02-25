@@ -65,6 +65,45 @@ impl Designer {
         self.create_rectangle(renderer, center, width, height, color)
     }
 
+    pub fn create_circle(
+        &self,
+        renderer: &mut WgpuRenderer,
+        center: Point,
+        radius: Measurement,
+        color: Color,
+        segments: u16,
+    ) {
+        let [center_x, center_y] = center.to_ndc(renderer.size);
+
+        let radius_pixels = radius.to_size(renderer.size.width);
+
+        let radius_ndc_x = radius_pixels * (2.0 / renderer.size.width as f32);
+        let radius_ndc_y = radius_pixels * (2.0 / renderer.size.height as f32);
+
+        let rgb = color.into_rgb_array();
+
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        vertices.push(Vertex::new([center_x, center_y], rgb));
+
+        for i in 0..=segments {
+            let angle = (i as f32 / segments as f32) * std::f32::consts::TAU;
+            let x = center_x + radius_ndc_x * angle.cos();
+            let y = center_y + radius_ndc_y * angle.sin();
+            vertices.push(Vertex::new([x, y], rgb));
+        }
+
+        for i in 1..=segments {
+            indices.push(0);
+            indices.push(i);
+            indices.push((i % segments) + 1);
+        }
+
+        let shape = renderer.create_shape(Shape { vertices, indices });
+        renderer.add_instance(shape, [0.0, 0.0], [1.0, 1.0]);
+    }
+
     pub fn create_text(
         &self,
         renderer: &mut WgpuRenderer,

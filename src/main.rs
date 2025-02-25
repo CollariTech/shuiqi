@@ -70,21 +70,29 @@ impl ShuqiIntermediateApp {
             let designer = Designer::new();
             designer.create_anchored_rectangle(
                 &mut renderer,
-                Point::from_pixels(12.0, 12.0), // 12-12 de distancia do topo
-                Measurement::Percentage(50.0), // 50% da tela
-                Measurement::Pixels(50.0), // 50 pixels de altura
-                Color::new(255, 0, 0) // vermelho
+                Point::from_pixels(12.0, 12.0),
+                Measurement::Percentage(50.0),
+                Measurement::Pixels(50.0),
+                Color::new(255, 0, 0)
             );
 
             designer.create_text(
                 &mut renderer,
-                Point::from_percentage(50.0, 50.0), // Meio da tela
-                "Hello, world!", // Texto
-                Family::Name("Roboto"), // Fonte
-                48.0, // Tamanho
-                1.0, // Linha
+                Point::from_percentage(50.0, 50.0),
+                "Hello, world!",
+                Family::Name("Roboto"),
+                48.0,
+                1.0,
                 None,
-                Color::new(0, 0, 0) // Preto
+                Color::new(0, 0, 0)
+            );
+
+            designer.create_circle(
+                &mut renderer,
+                Point::from_pixels(25.0, 300.0),
+                Measurement::Pixels(50.0),
+                Color::new(0, 255, 0),
+                16
             );
 
             renderer.render();

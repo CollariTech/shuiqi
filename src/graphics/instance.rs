@@ -42,7 +42,9 @@ pub struct Shape {
     pub indices: Vec<u16>
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ShapeData {
+    pub shape_id: u32,
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub indices_count: u32
