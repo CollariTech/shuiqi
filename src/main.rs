@@ -66,12 +66,12 @@ impl ShuqiIntermediateApp {
             let mut renderer = clone.lock().await;
 
             let designer = Designer::new();
-            designer.create_rectangle(
+            designer.create_anchored_rectangle(
                 &mut renderer,
-                Point::new(Measurement::Percentage(0.0), Measurement::Percentage(0.0)),
-                Measurement::Percentage(10.0),
-                Measurement::Percentage(100.0),
-                [rand::thread_rng().gen_range(0.0..1.0), rand::thread_rng().gen_range(0.0..1.0), rand::thread_rng().gen_range(0.0..1.0)]
+                Point::from_pixels(0.0, 0.0),
+                Measurement::Percentage(50.0),
+                Measurement::Pixels(50.0),
+                [0.0, 0.0, 1.0]
             );
 
             renderer.resize(size);
