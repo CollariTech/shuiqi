@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowId};
 
@@ -29,6 +29,7 @@ struct ShuqiIntermediateApp {
     pub window: Option<Window>,
     pub renderer: Option<Arc<Mutex<WgpuRenderer<'static>>>>,
     pub allow_resize: bool,
+    pub is_resizing: bool,
     pub resize_task: Option<tokio::task::JoinHandle<()>>
 }
 
@@ -39,6 +40,7 @@ impl ShuqiIntermediateApp {
             window: None,
             renderer: None,
             resize_task: None,
+            is_resizing: false,
             allow_resize: true
         }
     }
@@ -95,6 +97,16 @@ impl ShuqiIntermediateApp {
                 16
             );
 
+            designer.create_anchored_rounded_rectangle(
+                &mut renderer,
+                Point::from_pixels(12.0, 450.0),
+                Measurement::Pixels(60.0),
+                Measurement::Pixels(50.0),
+                Measurement::Pixels(28.0),
+                Color::new(255, 0, 0),
+                12000
+            );
+
             renderer.render();
         }));
     }
@@ -123,8 +135,13 @@ impl ApplicationHandler for ShuqiIntermediateApp {
                 println!("Closing app");
                 event_loop.exit();
             }
+            WindowEvent::MouseInput { state, ..} => {
+                if state == ElementState::Released {
+                    self.is_resizing = false
+                }
+            }
             WindowEvent::RedrawRequested => {
-                if self.resize_task.is_some() {
+                if self.resize_task.is_some() || self.is_resizing {
                     return;
                 }
 
@@ -137,6 +154,7 @@ impl ApplicationHandler for ShuqiIntermediateApp {
                 }
             }
             WindowEvent::Resized(size) => {
+                self.is_resizing = true;
                 self.schedule_resize(size);
             }
             _ => {}

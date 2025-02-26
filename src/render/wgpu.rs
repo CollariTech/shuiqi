@@ -17,10 +17,10 @@ pub struct WgpuRenderer<'window> {
     render_pipeline: RenderPipeline,
     instances: Vec<ObjectInstance>,
     instance_buffer: Buffer,
-    pub(crate) font_system: FontSystem,
+    pub font_system: FontSystem,
     swash_cache: SwashCache,
     text_renderer: TextRenderer,
-    text_areas: Vec<glyphon::TextArea<'static>>,
+    text_areas: Vec<TextArea<'static>>,
     text_atlas: TextAtlas,
     viewport: glyphon::Viewport,
     next_shape_id: u32
@@ -31,7 +31,6 @@ impl<'window> WgpuRenderer<'window> {
         let instance_data = InstanceData::new(position, scale);
         self.instances.push(ObjectInstance::new(shape, instance_data));
         self.update_instance_buffer();
-        println!("Total instances: {}", self.instances.len());
     }
 
     pub fn update_instance_buffer(&mut self) {
@@ -40,7 +39,7 @@ impl<'window> WgpuRenderer<'window> {
 
         let buffer_size = (instance_data.len() * std::mem::size_of::<InstanceData>()) as u64;
         if self.instance_buffer.size() < buffer_size {
-            self.instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            self.instance_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("Instance Buffer"),
                 contents: bytemuck::cast_slice(&instance_data),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -104,6 +103,35 @@ impl<'window> WgpuRenderer<'window> {
             ),
             custom_glyphs: &[]
         });
+    }
+
+    pub fn measure_text_size(
+        &mut self,
+        content: &str,
+        font_family: glyphon::Family<'static>,
+        font_size: f32,
+        line_height: f32,
+    ) -> (f32, f32) {
+        let mut temp_buffer = glyphon::Buffer::new(
+            &mut self.font_system,
+            glyphon::Metrics::new(font_size, line_height),
+        );
+        temp_buffer.set_size(&mut self.font_system, None, None);
+        temp_buffer.set_text(
+            &mut self.font_system,
+            &content,
+            glyphon::Attrs::new().family(font_family),
+            glyphon::Shaping::Advanced,
+        );
+        let runs: Vec<_> = temp_buffer.layout_runs().collect();
+        if runs.is_empty() {
+            (0.0, 0.0)
+        } else {
+            let max_width = runs.iter().map(|run| run.line_w).fold(0.0, f32::max);
+            let last_run = runs.last().unwrap();
+            let total_height = last_run.line_y + last_run.line_height;
+            (max_width, total_height)
+        }
     }
 }
 
