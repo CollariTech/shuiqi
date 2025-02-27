@@ -3,6 +3,7 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 pub mod wgpu;
+pub mod shape;
 
 #[async_trait(?Send)]
 pub trait Renderer<'window> {

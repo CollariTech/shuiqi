@@ -1,6 +1,6 @@
 #[derive(Clone, Debug)]
 pub struct ShuiqiOptions {
-    pub(crate) resize_interval: u128
+    pub resize_interval: u32
 }
 
 impl Default for ShuiqiOptions {

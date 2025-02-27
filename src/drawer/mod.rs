@@ -2,11 +2,11 @@ pub mod point;
 pub mod color;
 
 use glyphon::{Family, TextBounds};
-use crate::designer::color::Color;
-use crate::designer::point::{Measurement, Point};
-use crate::graphics::instance::{Shape, TextInstance, TextInstanceArea};
-use crate::graphics::Vertex;
+use crate::drawer::color::Color;
+use crate::drawer::point::{Measurement, Point};
+use crate::render::shape::{Shape, TextInstance, TextInstanceArea};
 use crate::render::wgpu::WgpuRenderer;
+use crate::shaders::Vertex;
 
 pub struct Designer;
 
@@ -30,7 +30,7 @@ impl Designer {
         let height_ndc = height_pixels / renderer.size.height as f32 * 2.0;
         let half_width = width_ndc / 2.0;
         let half_height = height_ndc / 2.0;
-        let rgb = color.into_rgb_array();
+        let rgb = color.into();
 
         let vertices = vec![
             Vertex::new([center_x - half_width, center_y + half_height], rgb),
@@ -65,6 +65,7 @@ impl Designer {
         self.create_rectangle(renderer, center, width, height, color)
     }
 
+    // More performant than create_rounded_rectangle with a 50% border radius
     pub fn create_circle(
         &self,
         renderer: &mut WgpuRenderer,
@@ -80,7 +81,7 @@ impl Designer {
         let radius_ndc_x = radius_pixels * (2.0 / renderer.size.width as f32);
         let radius_ndc_y = radius_pixels * (2.0 / renderer.size.height as f32);
 
-        let rgb = color.into_rgb_array();
+        let rgb = color.into();
 
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
@@ -149,7 +150,7 @@ impl Designer {
                     right: renderer.size.width as i32,
                     bottom: renderer.size.height as i32,
                 },
-                color: color.into_rgba_bytes()
+                color: color.into()
             },
         };
 
@@ -181,7 +182,7 @@ impl Designer {
         let radius_ndc_x = radius_ndc_x.min(half_width);
         let radius_ndc_y = radius_ndc_y.min(half_height);
 
-        let rgb = color.into_rgb_array();
+        let rgb = color.into();
 
         let mut vertices = Vec::new();
         let mut indices = Vec::new();

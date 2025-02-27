@@ -1,4 +1,4 @@
-use crate::graphics::instance::{InstanceData, ObjectInstance, Shape, ShapeData, TextInstance};
+use crate::render::shape::{ObjectInstance, Shape, ShapeData, TextInstance};
 use crate::render::Renderer;
 use async_trait::async_trait;
 use glyphon::{Color, FontSystem, SwashCache, TextArea, TextAtlas, TextRenderer};
@@ -6,6 +6,8 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, MultisampleState, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
+use crate::shaders::InstanceData;
+use crate::shaders::pipeline::create_instance_pipeline;
 
 pub struct WgpuRenderer<'window> {
     device: Device,
@@ -77,7 +79,7 @@ impl<'window> WgpuRenderer<'window> {
         }
     }
 
-    pub fn add_text(&mut self, text: TextInstance) {
+    pub fn add_text<'a>(&mut self, text: TextInstance) {
         let text_buffer = Box::leak(Box::new(glyphon::Buffer::new(
             &mut self.font_system,
             glyphon::Metrics::new(text.font_size, text.line_height)
@@ -95,12 +97,7 @@ impl<'window> WgpuRenderer<'window> {
             top: text.text_area.top,
             scale: text.text_area.scale,
             bounds: text.text_area.bounds,
-            default_color: Color::rgba(
-                text.text_area.color[0],
-                text.text_area.color[1],
-                text.text_area.color[2],
-                text.text_area.color[3]
-            ),
+            default_color: text.text_area.color.into(),
             custom_glyphs: &[]
         });
     }
@@ -174,7 +171,7 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         };
         surface.configure(&device, &config);
 
-        let pipeline = crate::graphics::pipeline::create_instance_pipeline(
+        let pipeline = create_instance_pipeline(
             &device
         );
 

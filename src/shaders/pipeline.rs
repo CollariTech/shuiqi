@@ -1,6 +1,5 @@
 use wgpu::{Device, RenderPipeline};
-use crate::graphics::instance::InstanceData;
-use crate::graphics::Vertex;
+use crate::shaders::{InstanceData, Vertex};
 
 pub fn create_instance_pipeline(device: &Device) -> RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
