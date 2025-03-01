@@ -172,7 +172,8 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         surface.configure(&device, &config);
 
         let pipeline = create_instance_pipeline(
-            &device
+            &device,
+            surface_format
         );
 
         let instance_buffer = device.create_buffer_init(

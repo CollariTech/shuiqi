@@ -1,7 +1,7 @@
-use wgpu::{Device, RenderPipeline};
+use wgpu::{Device, RenderPipeline, TextureFormat};
 use crate::shaders::{InstanceData, Vertex};
 
-pub fn create_instance_pipeline(device: &Device) -> RenderPipeline {
+pub fn create_instance_pipeline(device: &Device, texture_format: TextureFormat) -> RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shader"),
         source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/instance.wgsl").into()),
@@ -30,7 +30,7 @@ pub fn create_instance_pipeline(device: &Device) -> RenderPipeline {
             entry_point: Some("fs_main"),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                format: texture_format,
                 blend: Some(wgpu::BlendState::REPLACE),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
