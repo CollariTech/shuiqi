@@ -1,7 +1,7 @@
+use crate::painter::color::Color;
+use crate::shaders::{InstanceData, Vertex};
 use glyphon::TextBounds;
 use wgpu::Buffer;
-use crate::drawer::color::Color;
-use crate::shaders::{InstanceData, Vertex};
 
 #[derive(Clone, Debug)]
 pub struct Shape {

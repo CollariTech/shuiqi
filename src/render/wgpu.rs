@@ -1,13 +1,13 @@
 use crate::render::shape::{ObjectInstance, Shape, ShapeData, TextInstance};
 use crate::render::Renderer;
+use crate::shaders::pipeline::create_instance_pipeline;
+use crate::shaders::InstanceData;
 use async_trait::async_trait;
-use glyphon::{Color, FontSystem, SwashCache, TextArea, TextAtlas, TextRenderer};
+use glyphon::{FontSystem, SwashCache, TextArea, TextAtlas, TextRenderer};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, Device, DeviceDescriptor, IndexFormat, Instance, InstanceDescriptor, MultisampleState, Queue, RenderPipeline, Surface, SurfaceConfiguration, TextureViewDescriptor};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
-use crate::shaders::InstanceData;
-use crate::shaders::pipeline::create_instance_pipeline;
 
 pub struct WgpuRenderer<'window> {
     device: Device,

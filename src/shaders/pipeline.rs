@@ -1,5 +1,5 @@
-use wgpu::{Device, RenderPipeline, TextureFormat};
 use crate::shaders::{InstanceData, Vertex};
+use wgpu::{Device, RenderPipeline, TextureFormat};
 
 pub fn create_instance_pipeline(device: &Device, texture_format: TextureFormat) -> RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {

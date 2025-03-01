@@ -1,15 +1,16 @@
 mod render;
 mod shaders;
 mod config;
-mod drawer;
+mod painter;
 
 use crate::config::ShuiqiOptions;
-use crate::drawer::color::Color;
-use crate::drawer::point::{Measurement, Point};
-use crate::drawer::Designer;
+use crate::painter::color::Color;
+use crate::painter::point::{Measurement, Point};
+use crate::painter::text::InnerText;
+use crate::painter::writer::draw_objects;
+use crate::painter::Object;
 use crate::render::wgpu::WgpuRenderer;
 use crate::render::Renderer;
-use glyphon::Family;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use winit::application::ApplicationHandler;
@@ -67,42 +68,48 @@ impl ShuqiIntermediateApp {
             renderer.reset();
             renderer.resize(size);
 
-            let designer = Designer::new();
-            designer.create_anchored_rectangle(
-                &mut renderer,
+            let rectangle = Object::colored(
                 Point::from_pixels(12.0, 12.0),
                 Measurement::Pixels(50.0),
                 Measurement::Pixels(50.0),
                 Color::new(255, 0, 0)
             );
 
-            designer.create_text(
-                &mut renderer,
-                Point::from_percentage(50.0, 50.0),
-                "Hello, world!",
-                Family::Name("Roboto"),
-                48.0,
-                1.0,
-                None,
-                Color::new(0, 0, 0)
-            );
+            // designer.create_text(
+            //     &mut renderer,
+            //     Point::from_percentage(50.0, 50.0),
+            //     "Hello, world!",
+            //     Family::Name("Roboto"),
+            //     48.0,
+            //     1.0,
+            //     None,
+            //     Color::new(0, 0, 0)
+            // );
 
-            designer.create_circle(
-                &mut renderer,
+            let circle = Object::colored(
                 Point::from_pixels(25.0, 300.0),
                 Measurement::Pixels(50.0),
-                Color::new(0, 255, 0),
-                16
-            );
+                Measurement::Pixels(50.0),
+                Color::new(0, 255, 0)
+            )
+                .border_radius(Measurement::Percentage(50.0));
 
-            designer.create_anchored_rounded_rectangle(
-                &mut renderer,
-                Point::from_pixels(12.0, 450.0),
+            let rounded_rectangle = Object::colored(
+                Point::from_percentage(50.0, 50.0),
                 Measurement::Pixels(120.0),
                 Measurement::Pixels(60.0),
-                Measurement::Pixels(36.0),
-                Color::new(255, 0, 0),
-                12000
+                Color::new(255, 0, 0)
+            )
+                .centered()
+                .border_radius(Measurement::Pixels(36.0))
+                .text(
+                    InnerText::of("Hello, world!")
+                        .centered()
+                );
+
+            draw_objects(
+                &mut renderer,
+                vec![rectangle, circle, rounded_rectangle]
             );
 
             renderer.render();

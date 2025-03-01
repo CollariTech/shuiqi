@@ -12,6 +12,14 @@ impl Color {
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b, a: 255 }
     }
+
+    pub fn black() -> Self {
+        Self { r: 0, g: 0, b: 0, a: 255 }
+    }
+
+    pub fn white() -> Self {
+        Self { r: 255, g: 255, b: 255, a: 255 }
+    }
 }
 
 pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
