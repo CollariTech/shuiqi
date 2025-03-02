@@ -15,7 +15,6 @@ pub struct WgpuRenderer<'window> {
     pub size: PhysicalSize<u32>,
     surface: Surface<'window>,
     config: SurfaceConfiguration,
-    window: &'window Window,
     render_pipeline: RenderPipeline,
     instances: Vec<ObjectInstance>,
     instance_buffer: Buffer,
@@ -135,7 +134,6 @@ impl<'window> WgpuRenderer<'window> {
 #[async_trait(?Send)]
 impl<'window> Renderer<'window> for WgpuRenderer<'window> {
     async fn init(window: &'window Window) -> WgpuRenderer<'window> {
-        println!("Initializing WGPU renderer");
         let size = window.inner_size();
 
         let instance = Instance::new(&InstanceDescriptor::default());
@@ -201,7 +199,6 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
             device,
             queue,
             surface,
-            window,
             config,
             size,
             render_pipeline: pipeline,
@@ -327,3 +324,5 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         self.text_areas.clear()
     }
 }
+
+unsafe impl Send for WgpuRenderer<'_> {}

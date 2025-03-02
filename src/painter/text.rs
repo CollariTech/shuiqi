@@ -69,4 +69,9 @@ impl InnerText {
         self.content = content;
         self
     }
+
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
 }
