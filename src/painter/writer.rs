@@ -49,9 +49,15 @@ pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) {
     }
 
     if let Some(inner_text) = object.text {
+        let text_size = renderer.measure_text_size(
+            &inner_text.content,
+            inner_text.font_family,
+            inner_text.font_size,
+            inner_text.line_height,
+        );
         let text_position = Point::positioned(
             x,
-            y,
+            y + text_size.1 / 4.0,
             width_px,
             height_px,
             inner_text.corner.inverted()
@@ -65,7 +71,7 @@ pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) {
             inner_text.font_family,
             inner_text.font_size,
             inner_text.line_height,
-            None,
+            Some(text_size),
             inner_text.color
         );
     }
@@ -291,24 +297,20 @@ pub fn create_text(
     font_family: Family<'static>,
     font_size: f32,
     line_height: f32,
-    bounds: Option<(Measurement, Measurement)>,
+    bounds: Option<(f32, f32)>,
     color: Color,
 ) {
     let [x, y] = anchor.to_screen_space(renderer.size);
     let content_str = content.into();
 
-    let (text_width, text_height) = match bounds {
-        Some((w_measure, h_measure)) => (
-            w_measure.transform_with_bound(renderer.size.width),
-            h_measure.transform_with_bound(renderer.size.height),
-        ),
-        None => renderer.measure_text_size(
+    let (text_width, text_height) = bounds.unwrap_or_else(|| {
+        renderer.measure_text_size(
             &content_str,
             font_family,
             font_size,
             line_height,
         )
-    };
+    });
 
     let left = x - text_width / 2.0;
     let top = y - text_height / 2.0;
