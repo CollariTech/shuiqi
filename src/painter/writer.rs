@@ -6,15 +6,19 @@ use crate::render::wgpu::WgpuRenderer;
 use crate::shaders::Vertex;
 use glyphon::{Family, TextBounds};
 
-pub fn draw_objects(renderer: &mut WgpuRenderer, objects: Vec<Object>) {
+pub fn draw_objects(renderer: &mut WgpuRenderer, objects: Vec<Object>) -> Vec<u32> {
+    let mut ids = Vec::new();
     for object in objects {
-        draw_object(renderer, object);
+        let object_shapes = draw_object(renderer, object);
+        ids.extend(object_shapes);
     }
+    ids
 }
 
-pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) {
+pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) -> Vec<u32> {
+    let mut ids = Vec::new();
     if object.fill_color.is_none() {
-        return
+        return ids;
     }
     let [x, y] = object.screen_point.to_screen_space(renderer.size);
     let width_px = object.width.transform_with_bound(renderer.size.width);
@@ -29,7 +33,7 @@ pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) {
 
     let fill_color = object.fill_color.unwrap();
     if let Some(border_radius) = object.border_radius {
-        create_rounded_rectangle(
+        ids.push(create_rounded_rectangle(
             renderer,
             screen_point,
             object.width,
@@ -37,15 +41,15 @@ pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) {
             border_radius,
             fill_color,
             64 // placeholder value
-        );
+        ));
     } else {
-        create_rectangle(
+        ids.push(create_rectangle(
             renderer,
             screen_point,
             object.width,
             object.height,
             fill_color
-        );
+        ));
     }
 
     if let Some(inner_text) = object.text {
@@ -75,6 +79,7 @@ pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) {
             inner_text.color
         );
     }
+    ids
 }
 
 
@@ -84,7 +89,7 @@ pub fn create_rectangle(
     width: Measurement,
     height: Measurement,
     color: Color
-) {
+) -> u32 {
     let [center_x, center_y] = center.to_ndc(renderer.size);
     let width_pixels = width.transform_with_bound(renderer.size.width);
     let height_pixels = height.transform_with_bound(renderer.size.height);
@@ -117,7 +122,7 @@ pub fn create_circle(
     radius: Measurement,
     color: Color,
     segments: u16,
-) {
+) -> u32 {
     let [center_x, center_y] = center.to_ndc(renderer.size);
 
     let radius_pixels = radius.transform_with_bound(renderer.size.width);
@@ -144,6 +149,8 @@ pub fn create_circle(
         indices.push(i);
         indices.push((i % segments) + 1);
     }
+    let shape = renderer.create_shape(Shape { vertices, indices });
+    renderer.add_instance(shape, [0.0, 0.0], [1.0, 1.0])
 }
 
 pub fn create_rounded_rectangle(
@@ -154,15 +161,15 @@ pub fn create_rounded_rectangle(
     border_radius: Measurement,
     color: Color,
     segments_per_corner: u16
-) {
+) -> u32 {
     let [center_x, center_y] = center.to_ndc(renderer.size);
     let width_pixels = width.transform_with_bound(renderer.size.width);
     let height_pixels = height.transform_with_bound(renderer.size.height);
-    let radius_pixels = border_radius.transform_with_bound(renderer.size.width);
+    let radius_pixels = border_radius.broken_transform_with_bound(width_pixels);
 
     let is_circle = (width_pixels == height_pixels) && (width_pixels == 2.0 * radius_pixels);
     if is_circle {
-        return create_circle(renderer, center, border_radius, color, segments_per_corner);
+        return create_circle(renderer, center, Measurement::Pixels(radius_pixels), color, segments_per_corner);
     }
 
     let width_ndc = width_pixels / renderer.size.width as f32 * 2.0;

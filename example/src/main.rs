@@ -1,15 +1,15 @@
 use shuiqi::painter::color::Color;
-use shuiqi::painter::Object;
 use shuiqi::painter::point::{Measurement, Point};
 use shuiqi::painter::text::InnerText;
 use shuiqi::painter::writer::draw_objects;
+use shuiqi::painter::Object;
 use shuiqi::render::Renderer;
 use shuiqi::ShuiqiApp;
 
 #[tokio::main]
 async fn main() {
     let mut app = ShuiqiApp::create();
-    app.intercept_render(|renderer, _size| {
+    app.intercept_render(|renderer, _event| {
         renderer.reset();
         let rectangle = Object::colored(
             Point::from_pixels(12.0, 12.0),

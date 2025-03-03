@@ -23,8 +23,7 @@ struct ShuiqiAppState {
     renderer: Option<WgpuRenderer<'static>>,
     allow_resize: bool,
     resize_task: Option<JoinHandle<()>>,
-    draw_callback: Option<Box<dyn Fn(&mut WgpuRenderer<'static>, PhysicalSize<u32>) + Send + 'static>>,
-    pending_resize: Option<PhysicalSize<u32>>,
+    draw_callback: Option<Box<dyn Fn(&mut WgpuRenderer<'static>, ShuiqiEvent) + Send + 'static>>,
     event_loop_proxy: EventLoopProxy<ShuiqiEvent>
 }
 
@@ -52,7 +51,6 @@ impl ShuiqiApp {
                 resize_task: None,
                 allow_resize: true,
                 draw_callback: None,
-                pending_resize: None,
                 event_loop_proxy
             },
             event_loop,
@@ -61,7 +59,7 @@ impl ShuiqiApp {
 
     pub fn intercept_render<F>(&mut self, callback: F)
     where
-        F: Fn(&mut WgpuRenderer<'static>, PhysicalSize<u32>) + Send + 'static,
+        F: Fn(&mut WgpuRenderer<'static>, ShuiqiEvent) + Send + 'static,
     {
         self.state.draw_callback = Some(Box::new(callback));
     }
@@ -92,13 +90,17 @@ impl ApplicationHandler<ShuiqiEvent> for ShuiqiHandler {
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: ShuiqiEvent) {
         match event {
-            ShuiqiEvent::PerformResize => {
-                self.handle_resize();
+            ShuiqiEvent::PerformResize(new_size) => {
+                self.handle_resize(new_size);
             }
+            _ => {}
         }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
+        self.state.event_loop_proxy.send_event(
+            ShuiqiEvent::Window(event.clone())
+        ).expect("Failed to send window event");
         match event {
             WindowEvent::CloseRequested => {
                 println!("Closing app");
@@ -117,27 +119,28 @@ impl ApplicationHandler<ShuiqiEvent> for ShuiqiHandler {
 impl ShuiqiHandler {
     fn schedule_resize(&mut self, size: PhysicalSize<u32>) {
         if let Some(task) = self.state.resize_task.take() {
+            if self.state.config.resize_interval_accumulates {
+                return
+            }
             task.abort();
         }
 
-        self.state.pending_resize = Some(size);
         let delay = self.state.config.resize_interval;
         let proxy = self.state.event_loop_proxy.clone();
 
         self.state.resize_task = Some(tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(delay as u64)).await;
-            let _ = proxy.send_event(ShuiqiEvent::PerformResize);
+            let _ = proxy.send_event(ShuiqiEvent::PerformResize(size));
         }));
     }
 
-    fn handle_resize(&mut self) {
-        if let (Some(size), Some(renderer), Some(callback)) = (
-            self.state.pending_resize.take(),
+    fn handle_resize(&mut self, size: PhysicalSize<u32>) {
+        if let (Some(renderer), Some(eventbus)) = (
             self.state.renderer.as_mut(),
             self.state.draw_callback.as_ref(),
         ) {
             renderer.resize(size);
-            callback(renderer, size);
+            eventbus(renderer, ShuiqiEvent::PerformResize(size));
             if let Some(window) = self.state.window.as_ref() {
                 window.request_redraw();
             }

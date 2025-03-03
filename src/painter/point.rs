@@ -78,9 +78,14 @@ pub enum Measurement {
 
 impl Measurement {
     pub fn transform_with_bound(&self, screen_dimension: u32) -> f32 {
+        self.broken_transform_with_bound(screen_dimension as f32)
+    }
+
+    // todo: come up with a better name
+    pub fn broken_transform_with_bound(&self, screen_dimension: f32) -> f32 {
         match self {
             Measurement::Pixels(value) => *value,
-            Measurement::Percentage(percent) => ((screen_dimension as f32) * *percent) / 100.0
+            Measurement::Percentage(percent) => ((screen_dimension) * *percent) / 100.0
         }
     }
 }

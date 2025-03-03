@@ -28,17 +28,23 @@ pub struct WgpuRenderer<'window> {
 }
 
 impl<'window> WgpuRenderer<'window> {
-    pub fn add_instance(&mut self, shape: ShapeData, position: [f32; 2], scale: [f32; 2]) {
+    pub fn add_instance(&mut self, shape: ShapeData, position: [f32; 2], scale: [f32; 2]) -> u32 {
+        let shape_id = shape.shape_id;
         let instance_data = InstanceData::new(position, scale);
         self.instances.push(ObjectInstance::new(shape, instance_data));
         self.update_instance_buffer();
+        shape_id
+    }
+
+    pub fn remove_instance(&mut self, shape_id: u32) {
+        self.instances.retain(|instance| instance.shape.shape_id != shape_id);
     }
 
     pub fn update_instance_buffer(&mut self) {
         self.instances.sort_by_key(|instance| instance.shape.shape_id);
         let instance_data: Vec<_> = self.instances.iter().map(|i| i.data).collect();
 
-        let buffer_size = (instance_data.len() * std::mem::size_of::<InstanceData>()) as u64;
+        let buffer_size = (instance_data.len() * size_of::<InstanceData>()) as u64;
         if self.instance_buffer.size() < buffer_size {
             self.instance_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("Instance Buffer"),
@@ -89,7 +95,6 @@ impl<'window> WgpuRenderer<'window> {
             glyphon::Attrs::new().family(text.font_family),
             glyphon::Shaping::Advanced
         );
-        println!("Adding text to position ({}, {})", text.text_area.left, text.text_area.top);
         self.text_areas.push(TextArea {
             buffer: text_buffer,
             left: text.text_area.left,
@@ -324,5 +329,3 @@ impl<'window> Renderer<'window> for WgpuRenderer<'window> {
         self.text_areas.clear()
     }
 }
-
-unsafe impl Send for WgpuRenderer<'_> {}
