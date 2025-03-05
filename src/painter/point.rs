@@ -88,4 +88,15 @@ impl Measurement {
             Measurement::Percentage(percent) => ((screen_dimension) * *percent) / 100.0
         }
     }
+
+    pub fn is_pixels(&self) -> bool {
+        match self {
+            Measurement::Pixels(_) => true,
+            Measurement::Percentage(_) => false
+        }
+    }
+
+    pub fn is_percentage(&self) -> bool {
+        !self.is_pixels()
+    }
 }

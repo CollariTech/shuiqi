@@ -3,6 +3,7 @@ pub mod painter;
 pub mod render;
 pub mod shaders;
 pub mod bus;
+mod designer;
 
 use std::time::Duration;
 use tokio::task::JoinHandle;
@@ -23,7 +24,7 @@ struct ShuiqiAppState {
     renderer: Option<WgpuRenderer<'static>>,
     allow_resize: bool,
     resize_task: Option<JoinHandle<()>>,
-    draw_callback: Option<Box<dyn Fn(&mut WgpuRenderer<'static>, ShuiqiEvent) + Send + 'static>>,
+    event_handler: Option<Box<dyn Fn(&mut WgpuRenderer<'static>, ShuiqiEvent) + Send + 'static>>,
     event_loop_proxy: EventLoopProxy<ShuiqiEvent>
 }
 
@@ -50,18 +51,18 @@ impl ShuiqiApp {
                 renderer: None,
                 resize_task: None,
                 allow_resize: true,
-                draw_callback: None,
+                event_handler: None,
                 event_loop_proxy
             },
             event_loop,
         }
     }
 
-    pub fn intercept_render<F>(&mut self, callback: F)
+    pub fn set_event_handler<F>(&mut self, callback: F)
     where
         F: Fn(&mut WgpuRenderer<'static>, ShuiqiEvent) + Send + 'static,
     {
-        self.state.draw_callback = Some(Box::new(callback));
+        self.state.event_handler = Some(Box::new(callback));
     }
 
     pub fn start(self) {
@@ -92,7 +93,7 @@ impl ApplicationHandler<ShuiqiEvent> for ShuiqiHandler {
         match event {
             ShuiqiEvent::PerformResize(new_size) => {
                 self.handle_resize(new_size);
-            }
+            },
             _ => {}
         }
     }
@@ -105,6 +106,16 @@ impl ApplicationHandler<ShuiqiEvent> for ShuiqiHandler {
             WindowEvent::CloseRequested => {
                 println!("Closing app");
                 event_loop.exit();
+            }
+            WindowEvent::RedrawRequested => {
+                if let (Some(renderer), Some(eventbus)) = (
+                    self.state.renderer.as_mut(),
+                    self.state.event_handler.as_ref(),
+                ) {
+                    if self.state.resize_task.is_none() {
+                        eventbus(renderer, ShuiqiEvent::Redraw);
+                    }
+                }
             }
             WindowEvent::Resized(size) => {
                 if self.state.allow_resize {
@@ -137,13 +148,10 @@ impl ShuiqiHandler {
     fn handle_resize(&mut self, size: PhysicalSize<u32>) {
         if let (Some(renderer), Some(eventbus)) = (
             self.state.renderer.as_mut(),
-            self.state.draw_callback.as_ref(),
+            self.state.event_handler.as_ref(),
         ) {
             renderer.resize(size);
             eventbus(renderer, ShuiqiEvent::PerformResize(size));
-            if let Some(window) = self.state.window.as_ref() {
-                window.request_redraw();
-            }
             renderer.render();
         }
     }

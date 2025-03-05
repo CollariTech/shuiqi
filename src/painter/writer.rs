@@ -66,7 +66,6 @@ pub fn draw_object(renderer: &mut WgpuRenderer, object: Object) -> Vec<u32> {
             height_px,
             inner_text.corner.inverted()
         );
-        println!("Inner corner: {:?}", inner_text.corner);
 
         create_text(
             renderer,

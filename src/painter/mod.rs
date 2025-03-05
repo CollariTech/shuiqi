@@ -76,4 +76,16 @@ impl Object {
         self.text = Some(new_text);
         self
     }
+
+    pub fn is_static(&self) -> bool {
+        self.has_static_size() && self.has_static_position()
+    }
+
+    pub fn has_static_size(&self) -> bool {
+        self.width.is_pixels() && self.height.is_pixels()
+    }
+
+    pub fn has_static_position(&self) -> bool {
+        self.screen_point.x.is_pixels() && self.screen_point.y.is_pixels()
+    }
 }

@@ -9,7 +9,8 @@ use shuiqi::ShuiqiApp;
 #[tokio::main]
 async fn main() {
     let mut app = ShuiqiApp::create();
-    app.intercept_render(|renderer, _event| {
+    app.set_event_handler(|renderer, event| {
+        println!("{:?}", event);
         renderer.reset();
         let rectangle = Object::colored(
             Point::from_pixels(12.0, 12.0),
